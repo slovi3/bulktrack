@@ -1,40 +1,31 @@
-import React, { useEffect, useState } from "react";
-import { useLocation, useNavigate } from "react-router-dom";
+import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 
-export default function Login() {
-  const { login, user } = useAuth();
+export default function Register() {
+  const { register } = useAuth();
   const nav = useNavigate();
-  const loc = useLocation();
-
-  const from = loc.state?.from || "/dashboard";
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [err, setErr] = useState("");
 
-  useEffect(() => {
-    if (user) nav("/dashboard");
-  }, [user, nav]);
-
   const onSubmit = (e) => {
     e.preventDefault();
     setErr("");
     try {
-      const u = login({ email, password });
-      const p = u?.profile || {};
-      if (!p.fullName || !p.goal) nav("/onboarding");
-      else nav(from);
+      register({ email, password });
+      nav("/onboarding");
     } catch (ex) {
-      setErr(ex.message || "Giriş başarısız.");
+      setErr(ex.message || "Kayıt başarısız.");
     }
   };
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4">
       <div className="w-full max-w-md rounded-2xl border border-white/10 bg-white/5 p-6 shadow-xl">
-        <h1 className="text-xl font-semibold">Giriş Yap</h1>
-        <p className="text-sm opacity-70 mt-1">BulkTrack hesabına giriş yap.</p>
+        <h1 className="text-xl font-semibold">Kayıt Ol</h1>
+        <p className="text-sm opacity-70 mt-1">Yeni BulkTrack hesabı oluştur.</p>
 
         {err && (
           <div className="mt-4 rounded-xl bg-red-500/10 border border-red-500/20 p-3 text-sm">
@@ -61,15 +52,15 @@ export default function Login() {
           />
 
           <button className="w-full rounded-xl p-3 bg-white/10 hover:bg-white/15 border border-white/10">
-            Giriş
+            Devam
           </button>
 
           <button
             type="button"
-            onClick={() => nav("/register")}
+            onClick={() => nav("/login")}
             className="w-full text-sm opacity-80 hover:opacity-100"
           >
-            Hesabın yok mu? Kayıt ol
+            Zaten hesabın var mı? Giriş yap
           </button>
         </form>
       </div>
