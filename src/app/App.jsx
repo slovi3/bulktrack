@@ -19,7 +19,7 @@ export default function App() {
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
 
-      {/* Protected onboarding */}
+      {/* Protected but no Layout */}
       <Route
         path="/onboarding"
         element={
@@ -29,7 +29,7 @@ export default function App() {
         }
       />
 
-      {/* Protected app layout */}
+      {/* Protected + Layout */}
       <Route
         element={
           <RequireAuth>

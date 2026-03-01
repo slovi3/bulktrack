@@ -1,55 +1,29 @@
-import React from "react";
-import { Outlet, useLocation, useNavigate } from "react-router-dom";
-import TabBar from "../ui/TabBar";
+import { Outlet } from "react-router-dom";
+import TabBar from "../ui/TabBar.jsx";
 
-export default function Layout({ authed, onLogout }) {
-  const nav = useNavigate();
-  const { pathname } = useLocation();
-
-  const titleMap = {
-    "/dashboard": { title: "Dashboard", subtitle: "BulkTrack", icon: "home" },
-    "/kilo": { title: "Kilo", subtitle: "BulkTrack", icon: "scale" },
-    "/antrenman": { title: "Antrenman", subtitle: "BulkTrack", icon: "dumbbell" },
-    "/aliskanlik": { title: "Alışkanlık", subtitle: "BulkTrack", icon: "check" },
-  };
-
-  const meta = titleMap[pathname] || { title: "BulkTrack", subtitle: "Premium panel", icon: "home" };
-
+export default function Layout() {
   return (
-    <div className="app-shell">
-      {/* TOP BAR */}
-      <header className="topbar">
-        <div className="topbar__left" onClick={() => nav("/dashboard")} role="button" tabIndex={0}>
-          <div className="topbar__icon" aria-hidden="true">
-            {meta.icon === "home" && "⌂"}
-            {meta.icon === "scale" && "⚖"}
-            {meta.icon === "dumbbell" && "🏋"}
-            {meta.icon === "check" && "✓"}
+    <div className="min-h-screen">
+      {/* TOP BAR / HEADER */}
+      <div className="w-full bg-gradient-to-r from-purple-600 to-purple-800">
+        <div className="max-w-6xl mx-auto px-4 py-3 flex items-center justify-between">
+          <div className="flex flex-col leading-tight">
+            <div className="text-white font-semibold text-sm">Dashboard</div>
+            <div className="text-white/80 text-xs">BulkTrack</div>
           </div>
-          <div className="topbar__titles">
-            <div className="topbar__title">{meta.title}</div>
-            <div className="topbar__subtitle">{meta.subtitle}</div>
-          </div>
+
+          <button className="text-white/90 text-xs px-3 py-1 rounded-full bg-white/10 border border-white/15 hover:bg-white/15">
+            Premium
+          </button>
         </div>
+      </div>
 
-        <div className="topbar__right">
-          <span className="pill">Premium</span>
-
-          {/* ÇIKIŞ: authed true iken her sayfada görünür */}
-          {authed && (
-            <button className="iconbtn" onClick={onLogout} title="Çıkış">
-              ⎋
-            </button>
-          )}
-        </div>
-      </header>
-
-      {/* CONTENT */}
-      <main className="app-content">
+      {/* PAGE CONTENT */}
+      <main className="max-w-6xl mx-auto px-4 py-6 pb-24">
         <Outlet />
       </main>
 
-      {/* BOTTOM TAB */}
+      {/* BOTTOM TAB BAR */}
       <TabBar />
     </div>
   );
