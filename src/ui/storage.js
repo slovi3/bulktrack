@@ -1,3 +1,15 @@
+// AUTH & PROFILE KEYS
+export const LS_AUTH = "bulktrack_auth";
+export const LS_PROFILE = "bulktrack_profile";
+
+export function hasProfile() {
+  return !!localStorage.getItem(LS_PROFILE);
+}
+
+export function clearAuth() {
+  localStorage.removeItem(LS_AUTH);
+}
+
 const KEY = "bulktrack.v1";
 
 const defaultData = {

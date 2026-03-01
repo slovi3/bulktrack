@@ -1,95 +1,56 @@
 import React from "react";
-import { NavLink, Outlet, useLocation } from "react-router-dom";
-import { Home, Dumbbell, Scale, CheckSquare, LogOut } from "lucide-react";
+import { Outlet, useLocation, useNavigate } from "react-router-dom";
+import TabBar from "../ui/TabBar";
 
-const routeMeta = (pathname) => {
-  if (pathname.startsWith("/dashboard")) return { title: "Dashboard", icon: Home };
-  if (pathname.startsWith("/kilo")) return { title: "Kilo", icon: Scale };
-  if (pathname.startsWith("/antrenman")) return { title: "Antrenman", icon: Dumbbell };
-  if (pathname.startsWith("/aliskanlik")) return { title: "Alışkanlık", icon: CheckSquare };
-  if (pathname.startsWith("/onboarding")) return { title: "İlk Kurulum", icon: Home };
-  return { title: "BulkTrack", icon: Home };
-};
+export default function Layout({ authed, onLogout }) {
+  const nav = useNavigate();
+  const { pathname } = useLocation();
 
-export default function Layout({ onLogout }) {
-  const location = useLocation();
-  const meta = routeMeta(location.pathname);
-  const TitleIcon = meta.icon;
+  const titleMap = {
+    "/dashboard": { title: "Dashboard", subtitle: "BulkTrack", icon: "home" },
+    "/kilo": { title: "Kilo", subtitle: "BulkTrack", icon: "scale" },
+    "/antrenman": { title: "Antrenman", subtitle: "BulkTrack", icon: "dumbbell" },
+    "/aliskanlik": { title: "Alışkanlık", subtitle: "BulkTrack", icon: "check" },
+  };
 
-  const hideNav = location.pathname.startsWith("/login");
-  const hideTopbar = location.pathname.startsWith("/login");
+  const meta = titleMap[pathname] || { title: "BulkTrack", subtitle: "Premium panel", icon: "home" };
 
   return (
-    <div className="bt-app" style={{ minHeight: "100vh", display: "flex", flexDirection: "column" }}>
-      {/* Top Bar */}
-      {!hideTopbar && (
-        <header className="bt-topbar">
-          <div className="bt-topbarRow">
-            <div className="bt-brand">
-              <TitleIcon size={20} />
-              <div style={{ display: "flex", flexDirection: "column", lineHeight: 1.1 }}>
-                <div className="bt-title">{meta.title}</div>
-                <small>BulkTrack</small>
-              </div>
-            </div>
-
-            <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-              <span className="bt-chip">Premium</span>
-
-              {/* Logout (App.jsx onLogout verirse çalışır) */}
-              {typeof onLogout === "function" && (
-                <button
-                  className="bt-btn small ghost"
-                  onClick={onLogout}
-                  title="Çıkış"
-                  type="button"
-                  style={{ padding: "0 10px" }}
-                >
-                  <LogOut size={16} />
-                </button>
-              )}
-            </div>
+    <div className="app-shell">
+      {/* TOP BAR */}
+      <header className="topbar">
+        <div className="topbar__left" onClick={() => nav("/dashboard")} role="button" tabIndex={0}>
+          <div className="topbar__icon" aria-hidden="true">
+            {meta.icon === "home" && "⌂"}
+            {meta.icon === "scale" && "⚖"}
+            {meta.icon === "dumbbell" && "🏋"}
+            {meta.icon === "check" && "✓"}
           </div>
-        </header>
-      )}
+          <div className="topbar__titles">
+            <div className="topbar__title">{meta.title}</div>
+            <div className="topbar__subtitle">{meta.subtitle}</div>
+          </div>
+        </div>
 
-      {/* Page */}
-      <main
-        className="bt-container"
-        style={{
-          flex: 1,
-          padding: "16px 16px 86px", // alttaki navbar boşluğu
-        }}
-      >
+        <div className="topbar__right">
+          <span className="pill">Premium</span>
+
+          {/* ÇIKIŞ: authed true iken her sayfada görünür */}
+          {authed && (
+            <button className="iconbtn" onClick={onLogout} title="Çıkış">
+              ⎋
+            </button>
+          )}
+        </div>
+      </header>
+
+      {/* CONTENT */}
+      <main className="app-content">
         <Outlet />
       </main>
 
-      {/* Bottom Nav */}
-      {!hideNav && (
-        <nav className="bt-bottomnav">
-          <div className="bt-navRow">
-            <Tab to="/dashboard" label="Dashboard" Icon={Home} />
-            <Tab to="/kilo" label="Kilo" Icon={Scale} />
-            <Tab to="/antrenman" label="Antrenman" Icon={Dumbbell} />
-            <Tab to="/aliskanlik" label="Alışkanlık" Icon={CheckSquare} />
-          </div>
-        </nav>
-      )}
+      {/* BOTTOM TAB */}
+      <TabBar />
     </div>
-  );
-}
-
-function Tab({ to, label, Icon }) {
-  const IconComp = Icon;
-
-  return (
-    <NavLink
-      to={to}
-      className={({ isActive }) => `bt-navItem ${isActive ? "active" : ""}`}
-      end={to === "/dashboard"}
-    >
-      <IconComp size={20} />
-      <span>{label}</span>
-    </NavLink>
   );
 }
