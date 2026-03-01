@@ -1,16 +1,15 @@
 import { Routes, Route, Navigate } from "react-router-dom";
-import Layout from "./Layout.jsx";
+import Layout from "./Layout";
+import RequireAuth from "../auth/RequireAuth";
 
-import RequireAuth from "../auth/RequireAuth.jsx";
+import Dashboard from "../pages/Dashboard";
+import Weight from "../pages/Weight";
+import Workout from "../pages/Workout";
+import Habits from "../pages/Habits";
 
-import Dashboard from "../pages/Dashboard.jsx";
-import Weight from "../pages/Weight.jsx";
-import Workout from "../pages/Workout.jsx";
-import Habits from "../pages/Habits.jsx";
-
-import Login from "../pages/Login.jsx";
-import Register from "../pages/Register.jsx";
-import Onboarding from "../pages/Onboarding.jsx";
+import Login from "../pages/Login";
+import Register from "../pages/Register";
+import Onboarding from "../pages/Onboarding";
 
 export default function App() {
   return (
@@ -19,7 +18,7 @@ export default function App() {
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
 
-      {/* Protected but no Layout */}
+      {/* Protected no layout */}
       <Route
         path="/onboarding"
         element={
@@ -37,14 +36,12 @@ export default function App() {
           </RequireAuth>
         }
       >
+        <Route path="/" element={<Navigate to="/dashboard" />} />
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/kilo" element={<Weight />} />
         <Route path="/antrenman" element={<Workout />} />
         <Route path="/aliskanlik" element={<Habits />} />
       </Route>
-
-      {/* Default */}
-      <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>
   );
 }
