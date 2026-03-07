@@ -1,7 +1,9 @@
 import { Link, useLocation } from "react-router-dom";
 import { Home, Scale, Dumbbell, Settings } from "lucide-react";
 
-function TabItem({ to, label, icon: Icon, active }) {
+function TabItem({ to, label, icon, active }) {
+  const IconComponent = icon;
+
   return (
     <Link
       to={to}
@@ -11,13 +13,7 @@ function TabItem({ to, label, icon: Icon, active }) {
           : "text-white/60 hover:text-white hover:bg-white/5 border border-transparent"
       }`}
     >
-      {Icon ? (
-        <Icon
-          size={18}
-          className={active ? "drop-shadow-[0_0_12px_rgba(57,255,20,0.45)]" : ""}
-        />
-      ) : null}
-
+      <IconComponent size={18} />
       <span className="text-[11px]">{label}</span>
     </Link>
   );
@@ -34,20 +30,28 @@ export default function TabBar() {
             to="/dashboard"
             label="Ana"
             icon={Home}
-            active={pathname === "/dashboard"}
+            active={pathname.startsWith("/dashboard")}
           />
-          <TabItem to="/kilo" label="Kilo" icon={Scale} active={pathname === "/kilo"} />
+
+          <TabItem
+            to="/kilo"
+            label="Kilo"
+            icon={Scale}
+            active={pathname.startsWith("/kilo")}
+          />
+
           <TabItem
             to="/antrenman"
             label="Spor"
             icon={Dumbbell}
-            active={pathname === "/antrenman"}
+            active={pathname.startsWith("/antrenman")}
           />
+
           <TabItem
             to="/aliskanlik"
             label="Rutin"
             icon={Settings}
-            active={pathname === "/aliskanlik"}
+            active={pathname.startsWith("/aliskanlik")}
           />
         </div>
       </div>
