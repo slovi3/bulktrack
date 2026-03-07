@@ -20,9 +20,11 @@ export function findUserByEmail(email) {
   const users = getUsers();
   const safeEmail = String(email || "").trim().toLowerCase();
 
-  return users.find(
-    (u) => String(u.email || "").trim().toLowerCase() === safeEmail
-  ) || null;
+  return (
+    users.find(
+      (u) => String(u.email || "").trim().toLowerCase() === safeEmail
+    ) || null
+  );
 }
 
 export function getSession() {
@@ -44,9 +46,12 @@ export function clearSession() {
 }
 
 export function makeId() {
-  return crypto.randomUUID();
+  if (typeof crypto !== "undefined" && crypto.randomUUID) {
+    return crypto.randomUUID();
+  }
+  return `id_${Date.now()}_${Math.random().toString(36).slice(2)}`;
 }
 
 export function makeToken() {
-  return `${Date.now()}_${Math.random().toString(36).slice(2)}`;
+  return `token_${Date.now()}_${Math.random().toString(36).slice(2)}`;
 }
