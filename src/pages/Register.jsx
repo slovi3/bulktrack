@@ -1,68 +1,79 @@
-import React, { useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useState } from "react";
+import { useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../auth/useAuth";
 
 export default function Register() {
   const { register } = useAuth();
-  const nav = useNavigate();
+  const navigate = useNavigate();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [err, setErr] = useState("");
+  const [password2, setPassword2] = useState("");
 
-  const onSubmit = (e) => {
+  function handleSubmit(e) {
     e.preventDefault();
-    setErr("");
+
+    if (!email.trim() || !password.trim() || !password2.trim()) {
+      alert("Tüm alanları doldur.");
+      return;
+    }
+
+    if (password !== password2) {
+      alert("Şifreler eşleşmiyor.");
+      return;
+    }
+
     try {
       register({ email, password });
-      nav("/onboarding");
-    } catch (ex) {
-      setErr(ex.message || "Kayıt başarısız.");
+      navigate("/onboarding");
+    } catch (err) {
+      alert(err.message);
     }
-  };
+  }
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4">
-      <div className="w-full max-w-md rounded-2xl border border-white/10 bg-white/5 p-6 shadow-xl">
-        <h1 className="text-xl font-semibold">Kayıt Ol</h1>
-        <p className="text-sm opacity-70 mt-1">Yeni BulkTrack hesabı oluştur.</p>
-
-        {err && (
-          <div className="mt-4 rounded-xl bg-red-500/10 border border-red-500/20 p-3 text-sm">
-            {err}
+    <div className="bt-container bt-center" style={{ height: "100vh" }}>
+      <div className="bt-card" style={{ width: "360px" }}>
+        <div className="bt-stack">
+          <div>
+            <h1 className="bt-h1">BulkTrack</h1>
+            <p className="bt-sub">Yeni hesap oluştur</p>
           </div>
-        )}
 
-        <form onSubmit={onSubmit} className="mt-5 space-y-3">
-          <input
-            className="w-full rounded-xl bg-black/30 border border-white/10 p-3 outline-none"
-            placeholder="Email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            type="email"
-            required
-          />
-          <input
-            className="w-full rounded-xl bg-black/30 border border-white/10 p-3 outline-none"
-            placeholder="Şifre"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            type="password"
-            required
-          />
+          <form className="bt-stack" onSubmit={handleSubmit}>
+            <input
+              className="bt-input"
+              type="email"
+              placeholder="Email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+            />
 
-          <button className="w-full rounded-xl p-3 bg-white/10 hover:bg-white/15 border border-white/10">
-            Devam
-          </button>
+            <input
+              className="bt-input"
+              type="password"
+              placeholder="Şifre"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
 
-          <button
-            type="button"
-            onClick={() => nav("/login")}
-            className="w-full text-sm opacity-80 hover:opacity-100"
-          >
-            Zaten hesabın var mı? Giriş yap
-          </button>
-        </form>
+            <input
+              className="bt-input"
+              type="password"
+              placeholder="Şifre Tekrar"
+              value={password2}
+              onChange={(e) => setPassword2(e.target.value)}
+            />
+
+            <button className="bt-btn primary" type="submit">
+              Kayıt Ol
+            </button>
+          </form>
+
+          <p className="bt-sub">
+            Zaten hesabın var mı? <Link to="/login">Giriş yap</Link>
+          </p>
+        </div>
       </div>
     </div>
   );
