@@ -18,7 +18,7 @@ export default function App() {
       <Route path="/login" element={<Login />} />
       <Route path="/register" element={<Register />} />
 
-      {/* Protected no layout */}
+      {/* Protected but no layout */}
       <Route
         path="/onboarding"
         element={
@@ -30,18 +30,22 @@ export default function App() {
 
       {/* Protected + Layout */}
       <Route
+        path="/"
         element={
           <RequireAuth>
             <Layout />
           </RequireAuth>
         }
       >
-        <Route path="/" element={<Navigate to="/dashboard" />} />
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/kilo" element={<Weight />} />
-        <Route path="/antrenman" element={<Workout />} />
-        <Route path="/aliskanlik" element={<Habits />} />
+        <Route index element={<Navigate to="/dashboard" replace />} />
+        <Route path="dashboard" element={<Dashboard />} />
+        <Route path="kilo" element={<Weight />} />
+        <Route path="antrenman" element={<Workout />} />
+        <Route path="aliskanlik" element={<Habits />} />
       </Route>
+
+      {/* Fallback */}
+      <Route path="*" element={<Navigate to="/dashboard" replace />} />
     </Routes>
   );
 }
