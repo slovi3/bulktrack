@@ -1,616 +1,438 @@
-import React, { useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import {
   Dumbbell,
-  CigaretteOff,
-  Languages,
-  BookOpen,
-  CheckSquare,
   Scale,
-  Flame,
-  Ruler,
-  Save,
-  X,
-  ArrowRight,
+  BookOpen,
+  Languages,
+  CigaretteOff,
   HandHeart,
+  ChevronRight,
+  Flame,
+  Target,
+  Ruler,
+  PencilLine,
+  CheckSquare,
 } from "lucide-react";
-
 import useAppData from "../ui/useAppData";
 
-function pad2(n) {
-  return String(n).padStart(2, "0");
-}
-function toYMD(date) {
+function startOfDay(date) {
   const d = new Date(date);
-  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
-}
-function startOfWeekMonday(date) {
-  const d = new Date(date);
-  const day = d.getDay();
-  const diff = (day === 0 ? -6 : 1) - day;
-  d.setDate(d.getDate() + diff);
   d.setHours(0, 0, 0, 0);
   return d;
 }
-function addDays(date, days) {
-  const d = new Date(date);
-  d.setDate(d.getDate() + days);
-  return d;
-}
-function fmtDateShort(ymd) {
-  const mm = ymd.slice(5, 7);
-  const dd = ymd.slice(8, 10);
-  return `${dd}.${mm}`;
-}
-function calcBMI(heightCm, weightKg) {
-  const h = Number(heightCm) / 100;
-  const w = Number(weightKg);
-  if (!h || !w) return null;
-  const bmi = w / (h * h);
-  return Math.round(bmi * 10) / 10;
+
+function daysBetween(a, b) {
+  const ms = startOfDay(a).getTime() - startOfDay(b).getTime();
+  return Math.round(ms / 86400000);
 }
 
-function Card({ children, style }) {
-  return (
-    <div className="bt-card" style={style}>
-      {children}
-    </div>
+function getLast7DaysCount(workouts) {
+  const now = new Date();
+  return workouts.filter((w) => {
+    if (!w?.date) return false;
+    const diff = daysBetween(now, new Date(w.date));
+    return diff >= 0 && diff < 7;
+  }).length;
+}
+
+function getWorkoutStreak(workouts) {
+  if (!Array.isArray(workouts) || workouts.length === 0) return 0;
+
+  const dates = [...new Set(workouts.map((w) => w.date).filter(Boolean))].sort(
+    (a, b) => new Date(b) - new Date(a)
   );
-}
-function Badge({ children, style }) {
-  return (
-    <div className="bt-badge" style={style}>
-      {children}
-    </div>
-  );
+
+  let streak = 0;
+  let cursor = startOfDay(new Date());
+
+  for (let i = 0; i < 30; i += 1) {
+    const ymd = `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, "0")}-${String(
+      cursor.getDate()
+    ).padStart(2, "0")}`;
+
+    if (dates.includes(ymd)) {
+      streak += 1;
+      cursor.setDate(cursor.getDate() - 1);
+    } else {
+      if (i === 0) {
+        cursor.setDate(cursor.getDate() - 1);
+        continue;
+      }
+      break;
+    }
+  }
+
+  return streak;
 }
 
-function ActionCard({ icon, title, sub, rightText, onClick, active }) {
-  const IconComp = icon; // ESLint "unused" kesin susar
+function getStartWeight(weightLog, currentWeight) {
+  if (Array.isArray(weightLog) && weightLog.length > 0) {
+    const sorted = [...weightLog].sort((a, b) => new Date(a.date) - new Date(b.date));
+    return Number(sorted[0]?.kg || currentWeight || 0);
+  }
+  return Number(currentWeight || 0);
+}
+
+function getLatestWeight(weightLog, fallback) {
+  if (Array.isArray(weightLog) && weightLog.length > 0) {
+    const sorted = [...weightLog].sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+    return Number(sorted[0]?.kg || fallback || 0);
+  }
+  return Number(fallback || 0);
+}
+
+function getProgressPct(start, current, goal) {
+  const s = Number(start || 0);
+  const c = Number(current || 0);
+  const g = Number(goal || 0);
+
+  if (!g || g === s) return 0;
+  const pct = ((c - s) / (g - s)) * 100;
+  return Math.max(0, Math.min(100, Math.round(pct)));
+}
+
+function getBmi(weightKg, heightCm) {
+  const w = Number(weightKg || 0);
+  const h = Number(heightCm || 0) / 100;
+  if (!w || !h) return 0;
+  return +(w / (h * h)).toFixed(1);
+}
+
+function QuickAction({ to, icon, title, subtitle, pill }) {
+  const Icon = icon;
 
   return (
-    <button
-      className={`bt-action ${active ? "active" : ""}`}
-      onClick={onClick}
-      type="button"
-    >
+    <Link to={to} className="bt-action">
       <div className="left">
-        <span className="bt-iconBox">
-          {IconComp ? <IconComp size={18} /> : null}
-        </span>
+        <div className="bt-iconBox">
+          <Icon size={18} />
+        </div>
+
         <div className="txt">
           <div className="t">{title}</div>
-          <div className="s">{sub}</div>
+          <div className="s">{subtitle}</div>
         </div>
       </div>
 
       <div className="right">
-        {rightText ? <span className="pill">{rightText}</span> : null}
-        <ArrowRight size={16} />
+        {pill ? <span className="pill">{pill}</span> : null}
+        <ChevronRight size={18} />
       </div>
-    </button>
+    </Link>
+  );
+}
+
+function MiniStat({ icon, title, value, sub }) {
+  const Icon = icon;
+
+  return (
+    <div className="bt-item">
+      <div className="l">
+        <div className="bt-iconBox">
+          <Icon size={18} />
+        </div>
+
+        <div className="meta">
+          <b>{title}</b>
+          <span>{sub}</span>
+        </div>
+      </div>
+
+      <div className="bt-title">{value}</div>
+    </div>
   );
 }
 
 export default function Dashboard() {
-  const navigate = useNavigate();
-  const { today, profile, workouts, habitsToday, habitScore, workoutDoneToday, actions } =
-    useAppData();
+  const {
+    profile,
+    workouts,
+    habitsToday,
+    weightLog,
+    workoutDoneToday,
+    habitScore,
+  } = useAppData();
 
-  // Toast
-  const [toast, setToast] = useState(null);
-  const showToast = (msg) => {
-    setToast(msg);
-    window.clearTimeout(showToast._t);
-    showToast._t = window.setTimeout(() => setToast(null), 1500);
-  };
+  const heightCm = Number(profile?.heightCm || 0);
+  const weightKg = Number(profile?.weightKg || 0);
+  const goalWeightKg = Number(profile?.goalWeightKg || profile?.targetKg || 0);
+  const trainingDays = Number(profile?.trainingDays || 0);
 
-  // Profil modal
-  const [openProfile, setOpenProfile] = useState(false);
-  const [pHeight, setPHeight] = useState(profile.heightCm || "");
-  const [pWeight, setPWeight] = useState(profile.weightKg || "");
-  const [pGoal, setPGoal] = useState(profile.goalWeightKg || "");
+  const latestWeight = getLatestWeight(weightLog, weightKg);
+  const startWeight = getStartWeight(weightLog, weightKg);
+  const remainingKg = goalWeightKg ? +(goalWeightKg - latestWeight).toFixed(1) : 0;
+  const progressPct = getProgressPct(startWeight, latestWeight, goalWeightKg);
+  const weeklyWorkoutCount = getLast7DaysCount(workouts);
+  const workoutStreak = getWorkoutStreak(workouts);
+  const bmi = getBmi(latestWeight, heightCm);
 
-  const bmi = useMemo(
-    () => calcBMI(profile.heightCm, profile.weightKg),
-    [profile.heightCm, profile.weightKg]
-  );
+  const doneHabits = habitScore?.done || 0;
+  const totalHabits = habitScore?.total || 4;
+  const habitPct = habitScore?.pct || 0;
 
-  const weekly = useMemo(() => {
-    const start = startOfWeekMonday(new Date());
-    const days = Array.from({ length: 7 }, (_, i) => toYMD(addDays(start, i)));
-    const doneSet = new Set(workouts.map((w) => w.date));
-    const count = days.filter((d) => doneSet.has(d)).length;
-    return { days, doneSet, count };
-  }, [workouts]);
-
-  const goalDiff = useMemo(() => {
-    const w = Number(profile.weightKg);
-    const g = Number(profile.goalWeightKg);
-    if (!w || !g) return null;
-    return Math.round((g - w) * 10) / 10;
-  }, [profile.weightKg, profile.goalWeightKg]);
-
-  const dayDone = useMemo(() => {
-    const habitsDone = habitScore.done; // 0-4
-    const workoutDone = workoutDoneToday ? 1 : 0;
-    const total = 5; // 4 habit + workout
-    const done = habitsDone + workoutDone;
-    const pct = Math.round((done / total) * 100);
-    return { done, total, pct };
-  }, [habitScore.done, workoutDoneToday]);
-
-  const toggleHabit = (key, label) => {
-    const val = actions.toggleHabitToday(key);
-    showToast(label + (val ? " ✅" : " ❌"));
-  };
-
-  const onWorkoutQuick = () => {
-    const added = actions.addWorkoutToday();
-    showToast(added ? "Antrenman eklendi ✅" : "Bugün zaten kayıt var");
-    navigate("/antrenman");
-  };
-
-  const onWeightQuick = () => {
-    navigate("/kilo");
-  };
-
-  const onHabitsPage = () => {
-    navigate("/aliskanlik");
-  };
-
-  const saveProfile = () => {
-    actions.saveProfile({
-      ...profile,
-      heightCm: pHeight,
-      weightKg: pWeight,
-      goalWeightKg: pGoal,
-    });
-    showToast("Profil kaydedildi ✅");
-    setOpenProfile(false);
-  };
+  const quickActions = [
+    {
+      to: "/antrenman",
+      icon: Dumbbell,
+      title: workoutDoneToday ? "Bugün antrenman tamam" : "Bugün antrenman",
+      subtitle: workoutDoneToday ? "Harika, seri devam ediyor" : "1 kayıt = streak ilerler",
+      pill: workoutDoneToday ? "Tamam" : "Yap",
+    },
+    {
+      to: "/kilo",
+      icon: Scale,
+      title: "Kilo ekle",
+      subtitle: "Takibi güncelle",
+      pill: latestWeight ? `${latestWeight} kg` : "Yeni",
+    },
+    {
+      to: "/aliskanlik",
+      icon: CigaretteOff,
+      title: "Sigara yok",
+      subtitle: habitsToday?.noSmoking ? "Bugün temiz gidiyor" : "Bugünü işaretle",
+      pill: habitsToday?.noSmoking ? "İyi" : "",
+    },
+    {
+      to: "/aliskanlik",
+      icon: Languages,
+      title: "İngilizce",
+      subtitle: habitsToday?.english ? "Bugün tamamlandı" : "En az 20 dk",
+      pill: habitsToday?.english ? "Bitti" : "",
+    },
+    {
+      to: "/aliskanlik",
+      icon: BookOpen,
+      title: "Kitap",
+      subtitle: habitsToday?.reading ? "Günlük okuma tamam" : "Günlük okuma",
+      pill: habitsToday?.reading ? "Bitti" : "",
+    },
+    {
+      to: "/aliskanlik",
+      icon: HandHeart,
+      title: "Namaz / Dua",
+      subtitle: habitsToday?.prayer ? "Bugün tamamlandı" : "Bugün tamamlandı mı?",
+      pill: habitsToday?.prayer ? "Tamam" : "",
+    },
+  ];
 
   return (
-    <div className="bt-wrap">
-      {/* Dashboard local styles */}
-      <style>{`
-        .bt-wrap{ display:grid; gap:14px; }
-
-        .bt-card{
-          border:1px solid rgba(255,255,255,0.08);
-          background: rgba(255,255,255,0.03);
-          border-radius: 18px;
-          padding: 14px;
-        }
-        .bt-row{
-          display:flex;
-          align-items:flex-start;
-          justify-content:space-between;
-          gap:12px;
-        }
-        .bt-title{ font-weight: 900; font-size: 15px; }
-        .bt-sub{ font-size: 12px; opacity: .78; }
-
-        .bt-badge{
-          display:inline-flex;
-          align-items:center;
-          gap:8px;
-          padding:6px 10px;
-          border-radius:999px;
-          border:1px solid rgba(255,255,255,0.12);
-          background: rgba(0,0,0,0.18);
-          font-size:12px;
-          white-space:nowrap;
-        }
-
-        .bt-btn{
-          display:flex;
-          align-items:center;
-          gap:10px;
-          padding:10px 12px;
-          border-radius:14px;
-          border:1px solid rgba(255,255,255,0.10);
-          background: rgba(255,255,255,0.04);
-          color: rgba(255,255,255,0.92);
-          cursor:pointer;
-        }
-        .bt-btnPrimary{
-          border-color: rgba(57,255,136,0.22);
-          background: linear-gradient(180deg, rgba(57,255,136,0.12), rgba(124,58,237,0.08));
-        }
-
-        .bt-iconBox{
-          width: 36px;
-          height: 36px;
-          border-radius: 14px;
-          display:grid;
-          place-items:center;
-          border:1px solid rgba(255,255,255,0.10);
-          background: rgba(0,0,0,0.22);
-        }
-
-        .bt-progress{
-          height: 12px;
-          border-radius: 999px;
-          border:1px solid rgba(255,255,255,0.10);
-          background: rgba(255,255,255,0.03);
-          overflow:hidden;
-        }
-        .bt-progress > div{
-          height:100%;
-          width:0%;
-          background: linear-gradient(90deg, rgba(57,255,136,0.85), rgba(124,58,237,0.85));
-        }
-
-        .bt-actionsGrid{
-          margin-top: 12px;
-          display:grid;
-          grid-template-columns: repeat(3, 1fr);
-          gap: 10px;
-        }
-        @media (max-width: 820px){
-          .bt-actionsGrid{ grid-template-columns: 1fr; }
-        }
-
-        .bt-action{
-          width:100%;
-          border-radius: 16px;
-          border:1px solid rgba(255,255,255,0.08);
-          background: rgba(255,255,255,0.03);
-          padding: 12px;
-          cursor:pointer;
-          color: rgba(255,255,255,0.92);
-          display:flex;
-          align-items:center;
-          justify-content:space-between;
-          gap: 10px;
-        }
-        .bt-action:hover{
-          background: rgba(255,255,255,0.05);
-          border-color: rgba(255,255,255,0.12);
-        }
-        .bt-action.active{
-          background: linear-gradient(180deg, rgba(57,255,136,0.12), rgba(124,58,237,0.08));
-          border-color: rgba(57,255,136,0.22);
-        }
-        .bt-action .left{
-          display:flex;
-          align-items:center;
-          gap: 12px;
-          text-align:left;
-        }
-        .bt-action .txt{ display:flex; flex-direction:column; gap:2px; }
-        .bt-action .t{ font-weight: 900; }
-        .bt-action .s{ font-size: 12px; opacity:.78; }
-        .bt-action .right{
-          display:flex;
-          align-items:center;
-          gap: 10px;
-          opacity:.95;
-        }
-        .bt-action .pill{
-          font-size: 12px;
-          padding: 4px 8px;
-          border-radius: 999px;
-          border: 1px solid rgba(255,255,255,0.12);
-          background: rgba(0,0,0,0.18);
-          opacity: .9;
-        }
-
-        .bt-chipsRow{
-          margin-top: 10px;
-          display:flex;
-          flex-wrap:wrap;
-          gap:8px;
-        }
-        .bt-chip{
-          display:inline-flex;
-          align-items:center;
-          gap:8px;
-          padding:6px 10px;
-          border-radius:999px;
-          border:1px solid rgba(255,255,255,0.10);
-          background: rgba(255,255,255,0.03);
-          font-size:12px;
-          cursor:pointer;
-          user-select:none;
-        }
-        .bt-chip.on{
-          border-color: rgba(57,255,136,0.22);
-          background: rgba(57,255,136,0.10);
-        }
-
-        .bt-modalBg{
-          position:fixed; inset:0; z-index:200;
-          background: rgba(0,0,0,0.55);
-          display:grid; place-items:center;
-          padding: 16px;
-        }
-        .bt-modal{
-          width: min(720px, 100%);
-          border-radius: 18px;
-          border:1px solid rgba(255,255,255,0.10);
-          background: rgba(10,14,22,0.90);
-          backdrop-filter: blur(10px);
-          padding: 14px;
-        }
-        .bt-field{ display:grid; gap:6px; }
-        .bt-input{
-          width:100%;
-          padding: 12px 12px;
-          border-radius: 14px;
-          border:1px solid rgba(255,255,255,0.10);
-          background: rgba(255,255,255,0.04);
-          color: rgba(255,255,255,0.92);
-          outline:none;
-        }
-        .bt-grid3{
-          display:grid;
-          grid-template-columns: repeat(3, 1fr);
-          gap: 10px;
-        }
-        @media (max-width: 820px){
-          .bt-grid3{ grid-template-columns: 1fr; }
-        }
-
-        .bt-toast{
-          position: fixed;
-          top: 20px;
-          right: 20px;
-          padding: 12px 16px;
-          border-radius: 14px;
-          background: linear-gradient(90deg, rgba(57,255,136,0.95), rgba(124,58,237,0.95));
-          color: #000;
-          font-weight: 900;
-          z-index: 999;
-          box-shadow: 0 10px 30px rgba(0,0,0,0.4);
-          animation: fadeInOut 1.5s ease forwards;
-        }
-        @keyframes fadeInOut{
-          0%{ opacity:0; transform: translateY(-10px); }
-          10%{ opacity:1; transform: translateY(0); }
-          90%{ opacity:1; }
-          100%{ opacity:0; }
-        }
-      `}</style>
-
-      {/* QUICK ACTIONS */}
-      <Card>
-        <div className="bt-row">
-          <div>
-            <div className="bt-title">Quick Actions</div>
-            <div className="bt-sub">Bugün için tek tık</div>
-          </div>
-          <Badge>
-            <Flame size={14} />
-            Bu hafta <b>{weekly.count}/7</b>
-          </Badge>
-        </div>
-
-        <div className="bt-actionsGrid">
-          <ActionCard
-            icon={Dumbbell}
-            title="Bugün Antrenman"
-            sub="1 kayıt = streak ilerler"
-            rightText={workoutDoneToday ? "✅" : ""}
-            onClick={onWorkoutQuick}
-            active={workoutDoneToday}
-          />
-
-          <ActionCard
-            icon={CigaretteOff}
-            title="Sigara Yok"
-            sub="Bugünü işaretle"
-            rightText={habitsToday.noSmoking ? "✅" : ""}
-            onClick={() => toggleHabit("noSmoking", "Sigara Yok")}
-            active={habitsToday.noSmoking}
-          />
-
-          <ActionCard
-            icon={Languages}
-            title="İngilizce"
-            sub="30 günlük sistem"
-            rightText={habitsToday.english ? "✅" : ""}
-            onClick={() => toggleHabit("english", "İngilizce")}
-            active={habitsToday.english}
-          />
-
-          <ActionCard
-            icon={BookOpen}
-            title="Kitap"
-            sub="Günlük okuma"
-            rightText={habitsToday.reading ? "✅" : ""}
-            onClick={() => toggleHabit("reading", "Kitap")}
-            active={habitsToday.reading}
-          />
-
-          <ActionCard
-            icon={HandHeart}
-            title="Namaz / Dua"
-            sub="Bugün tamamlandı mı?"
-            rightText={habitsToday.prayer ? "✅" : ""}
-            onClick={() => toggleHabit("prayer", "Namaz")}
-            active={habitsToday.prayer}
-          />
-
-          <ActionCard
-            icon={CheckSquare}
-            title="Alışkanlık Sayfası"
-            sub="Detaylı kayıt / not"
-            rightText=""
-            onClick={onHabitsPage}
-            active={false}
-          />
-
-          <ActionCard
-            icon={Scale}
-            title="Kilo Ekle"
-            sub="Takibi güncelle"
-            rightText=""
-            onClick={onWeightQuick}
-            active={false}
-          />
-        </div>
-      </Card>
-
-      {/* DAY SCORE */}
-      <Card>
-        <div className="bt-row">
-          <div>
-            <div className="bt-title">Günün Skoru</div>
-            <div className="bt-sub">
-              {dayDone.done}/{dayDone.total} tamamlandı • {fmtDateShort(today)}
-            </div>
-          </div>
-          <Badge>
-            <b>{dayDone.pct}%</b>
-          </Badge>
-        </div>
-
-        <div className="bt-progress" style={{ marginTop: 12 }}>
-          <div style={{ width: `${dayDone.pct}%` }} />
-        </div>
-
-        <div className="bt-chipsRow">
-          <div className={`bt-chip ${workoutDoneToday ? "on" : ""}`} onClick={onWorkoutQuick}>
-            <Dumbbell size={14} /> Antrenman {workoutDoneToday ? "✅" : "⬜"}
-          </div>
-          <div className={`bt-chip ${habitsToday.noSmoking ? "on" : ""}`} onClick={() => toggleHabit("noSmoking", "Sigara Yok")}>
-            <CigaretteOff size={14} /> Sigara {habitsToday.noSmoking ? "✅" : "⬜"}
-          </div>
-          <div className={`bt-chip ${habitsToday.english ? "on" : ""}`} onClick={() => toggleHabit("english", "İngilizce")}>
-            <Languages size={14} /> İngilizce {habitsToday.english ? "✅" : "⬜"}
-          </div>
-          <div className={`bt-chip ${habitsToday.reading ? "on" : ""}`} onClick={() => toggleHabit("reading", "Kitap")}>
-            <BookOpen size={14} /> Kitap {habitsToday.reading ? "✅" : "⬜"}
-          </div>
-          <div className={`bt-chip ${habitsToday.prayer ? "on" : ""}`} onClick={() => toggleHabit("prayer", "Namaz")}>
-            <HandHeart size={14} /> Namaz {habitsToday.prayer ? "✅" : "⬜"}
-          </div>
-        </div>
-      </Card>
-
-      {/* PROFILE SUMMARY */}
-      <Card>
-        <div className="bt-row">
-          <div>
-            <div className="bt-title">Profil Özeti</div>
-            <div className="bt-sub">Hızlı kontrol</div>
-          </div>
-
-          <button
-            className="bt-btn bt-btnPrimary"
-            style={{ width: "auto" }}
-            onClick={() => setOpenProfile(true)}
-          >
-            <Ruler size={16} />
-            Düzenle
-          </button>
-        </div>
-
-        <div style={{ marginTop: 12 }} className="bt-grid3">
-          <div className="bt-btn" style={{ cursor: "default" }}>
-            <span className="bt-iconBox">
-              <Ruler size={18} />
-            </span>
+    <div className="bt-container" style={{ padding: "16px 12px 110px" }}>
+      <div className="bt-stack">
+        <div className="bt-card">
+          <div className="bt-row" style={{ alignItems: "flex-start" }}>
             <div>
-              <div style={{ fontWeight: 900 }}>Boy</div>
-              <div className="bt-sub">{profile.heightCm ? `${profile.heightCm} cm` : "—"}</div>
+              <div className="bt-h1">BulkTrack</div>
+              <div className="bt-sub">Kas ve kilo alma takibin burada.</div>
             </div>
-          </div>
 
-          <div className="bt-btn" style={{ cursor: "default" }}>
-            <span className="bt-iconBox">
-              <Scale size={18} />
+            <span className="bt-badge green">
+              <Flame size={14} />
+              Bu hafta {weeklyWorkoutCount}/{trainingDays || 7}
             </span>
-            <div>
-              <div style={{ fontWeight: 900 }}>Kilo</div>
-              <div className="bt-sub">{profile.weightKg ? `${profile.weightKg} kg` : "—"}</div>
-            </div>
           </div>
 
-          <div className="bt-btn" style={{ cursor: "default" }}>
-            <span className="bt-iconBox">
-              <Flame size={18} />
-            </span>
-            <div>
-              <div style={{ fontWeight: 900 }}>Hedef</div>
-              <div className="bt-sub">
-                {profile.goalWeightKg ? `${profile.goalWeightKg} kg` : "—"}
-                {goalDiff != null ? ` • fark: ${goalDiff > 0 ? "+" : ""}${goalDiff} kg` : ""}
-              </div>
-            </div>
+          <div style={{ height: 14 }} />
+
+          <div className="bt-grid3">
+            <MiniStat
+              icon={Scale}
+              title="Güncel kilo"
+              value={`${latestWeight || 0} kg`}
+              sub="Son kayıt / profil"
+            />
+            <MiniStat
+              icon={Target}
+              title="Hedef"
+              value={goalWeightKg ? `${goalWeightKg} kg` : "-"}
+              sub={goalWeightKg ? `Kalan: ${remainingKg > 0 ? `+${remainingKg}` : remainingKg} kg` : "Hedef ekle"}
+            />
+            <MiniStat
+              icon={Dumbbell}
+              title="Workout streak"
+              value={`${workoutStreak}`}
+              sub="Ardışık gün"
+            />
           </div>
-        </div>
 
-        <div className="bt-sub" style={{ marginTop: 10 }}>
-          BMI: <b>{bmi != null ? bmi : "—"}</b>
-        </div>
-      </Card>
+          <div style={{ height: 14 }} />
 
-      {/* PROFILE MODAL */}
-      {openProfile && (
-        <div className="bt-modalBg" onClick={() => setOpenProfile(false)}>
-          <div className="bt-modal" onClick={(e) => e.stopPropagation()}>
+          <div className="bt-card soft pad">
             <div className="bt-row">
               <div>
-                <div className="bt-title">Profil Düzenle</div>
-                <div className="bt-sub">Boy / Kilo / Hedef</div>
+                <div className="bt-h2">Kilo ilerleme</div>
+                <div className="bt-sub">
+                  Başlangıç: {startWeight || 0} kg · Şu an: {latestWeight || 0} kg · Hedef:{" "}
+                  {goalWeightKg || 0} kg
+                </div>
               </div>
-              <button className="bt-btn" style={{ width: "auto" }} onClick={() => setOpenProfile(false)}>
-                <X size={16} />
-              </button>
+
+              <span className="bt-badge violet">{progressPct}%</span>
             </div>
 
-            <div style={{ marginTop: 12 }} className="bt-grid3">
-              <div className="bt-field">
-                <div className="bt-sub">Boy (cm)</div>
-                <input
-                  className="bt-input"
-                  value={pHeight}
-                  onChange={(e) => setPHeight(e.target.value.replace(/[^\d]/g, ""))}
-                  inputMode="numeric"
-                  placeholder="178"
-                />
-              </div>
+            <div style={{ height: 10 }} />
 
-              <div className="bt-field">
-                <div className="bt-sub">Kilo (kg)</div>
-                <input
-                  className="bt-input"
-                  value={pWeight}
-                  onChange={(e) => setPWeight(e.target.value.replace(/[^\d.]/g, ""))}
-                  inputMode="decimal"
-                  placeholder="58"
-                />
-              </div>
-
-              <div className="bt-field">
-                <div className="bt-sub">Hedef Kilo (kg)</div>
-                <input
-                  className="bt-input"
-                  value={pGoal}
-                  onChange={(e) => setPGoal(e.target.value.replace(/[^\d.]/g, ""))}
-                  inputMode="decimal"
-                  placeholder="65"
-                />
-              </div>
-            </div>
-
-            <div style={{ marginTop: 12, display: "flex", justifyContent: "flex-end", gap: 10 }}>
-              <button className="bt-btn" style={{ width: "auto" }} onClick={() => setOpenProfile(false)}>
-                <X size={16} /> Vazgeç
-              </button>
-              <button className="bt-btn bt-btnPrimary" style={{ width: "auto" }} onClick={saveProfile}>
-                <Save size={16} /> Kaydet
-              </button>
+            <div className="bt-progressWrap">
+              <div className="bt-progressFill" style={{ width: `${progressPct}%` }} />
             </div>
           </div>
         </div>
-      )}
 
-      {/* TOAST */}
-      {toast && <div className="bt-toast">{toast}</div>}
+        <div className="bt-card">
+          <div className="bt-h2">Quick Actions</div>
+          <div className="bt-sub">Bugün için tek tık</div>
+
+          <div style={{ height: 12 }} />
+
+          <div className="bt-grid3">
+            {quickActions.map((item) => (
+              <QuickAction key={item.title} {...item} />
+            ))}
+          </div>
+        </div>
+
+        <div className="bt-card">
+          <div className="bt-row">
+            <div>
+              <div className="bt-h2">Günün skoru</div>
+              <div className="bt-sub">
+                {doneHabits}/{totalHabits} tamamlandı
+              </div>
+            </div>
+
+            <span className="bt-badge">{habitPct}%</span>
+          </div>
+
+          <div style={{ height: 10 }} />
+
+          <div className="bt-progressWrap">
+            <div className="bt-progressFill" style={{ width: `${habitPct}%` }} />
+          </div>
+
+          <div style={{ height: 12 }} />
+
+          <div className="bt-row" style={{ flexWrap: "wrap", justifyContent: "flex-start" }}>
+            <span className={`bt-chip ${habitsToday?.noSmoking ? "green" : ""}`}>Sigara</span>
+            <span className={`bt-chip ${habitsToday?.english ? "green" : ""}`}>İngilizce</span>
+            <span className={`bt-chip ${habitsToday?.reading ? "green" : ""}`}>Kitap</span>
+            <span className={`bt-chip ${habitsToday?.prayer ? "green" : ""}`}>Namaz</span>
+          </div>
+        </div>
+
+        <div className="bt-card">
+          <div className="bt-row">
+            <div>
+              <div className="bt-h2">Profil özeti</div>
+              <div className="bt-sub">Hızlı kontrol</div>
+            </div>
+
+            <Link to="/onboarding" className="bt-btn small">
+              <PencilLine size={14} />
+              Düzenle
+            </Link>
+          </div>
+
+          <div style={{ height: 12 }} />
+
+          <div className="bt-grid3">
+            <MiniStat
+              icon={Ruler}
+              title="Boy"
+              value={heightCm ? `${heightCm} cm` : "-"}
+              sub={`BMI: ${bmi || 0}`}
+            />
+            <MiniStat
+              icon={Scale}
+              title="Kilo"
+              value={latestWeight ? `${latestWeight} kg` : "-"}
+              sub={weightLog?.length ? "Log ile güncel" : "Profil verisi"}
+            />
+            <MiniStat
+              icon={Target}
+              title="Hedef"
+              value={goalWeightKg ? `${goalWeightKg} kg` : "-"}
+              sub={
+                goalWeightKg
+                  ? `Fark: ${remainingKg > 0 ? `+${remainingKg}` : remainingKg} kg`
+                  : "Hedef belirle"
+              }
+            />
+          </div>
+        </div>
+
+        <div className="bt-grid2">
+          <div className="bt-card">
+            <div className="bt-h2">Bugün durumu</div>
+            <div className="bt-sub">Geriye kalan en net şeyler</div>
+
+            <div style={{ height: 12 }} />
+
+            <div className="bt-stack">
+              <div className="bt-item">
+                <div className="l">
+                  <div className="bt-iconBox">
+                    <Dumbbell size={18} />
+                  </div>
+                  <div className="meta">
+                    <b>Antrenman</b>
+                    <span>{workoutDoneToday ? "Bugün tamamlandı" : "Bugün kayıt yok"}</span>
+                  </div>
+                </div>
+                <div className="bt-title">{workoutDoneToday ? "✅" : "—"}</div>
+              </div>
+
+              <div className="bt-item">
+                <div className="l">
+                  <div className="bt-iconBox">
+                    <Scale size={18} />
+                  </div>
+                  <div className="meta">
+                    <b>Son kilo</b>
+                    <span>{weightLog?.[0]?.date || "Henüz kayıt yok"}</span>
+                  </div>
+                </div>
+                <div className="bt-title">{latestWeight ? `${latestWeight} kg` : "-"}</div>
+              </div>
+
+              <div className="bt-item">
+                <div className="l">
+                  <div className="bt-iconBox">
+                    <CheckSquare size={18} />
+                  </div>
+                  <div className="meta">
+                    <b>Alışkanlık skoru</b>
+                    <span>Bugünkü tamamlanma</span>
+                  </div>
+                </div>
+                <div className="bt-title">{habitPct}%</div>
+              </div>
+            </div>
+          </div>
+
+          <div className="bt-card">
+            <div className="bt-h2">Hızlı yönlendirme</div>
+            <div className="bt-sub">Bugün en mantıklı 3 hareket</div>
+
+            <div style={{ height: 12 }} />
+
+            <div className="bt-stack">
+              <Link to="/kilo" className="bt-btn primary">
+                <Scale size={16} />
+                Kilo kaydı ekle
+              </Link>
+
+              <Link to="/antrenman" className="bt-btn">
+                <Dumbbell size={16} />
+                Antrenmanı işle
+              </Link>
+
+              <Link to="/aliskanlik" className="bt-btn ghost">
+                <CheckSquare size={16} />
+                Rutinleri tamamla
+              </Link>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
