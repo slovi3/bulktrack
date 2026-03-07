@@ -19,9 +19,10 @@ export function setUsers(users) {
 export function findUserByEmail(email) {
   const users = getUsers();
   const safeEmail = String(email || "").trim().toLowerCase();
+
   return users.find(
     (u) => String(u.email || "").trim().toLowerCase() === safeEmail
-  );
+  ) || null;
 }
 
 export function getSession() {
